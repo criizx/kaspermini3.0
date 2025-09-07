@@ -3,9 +3,16 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <mutex>
+
+HashDB::~HashDB() {
+    try {
+        hashes.clear();
+    } catch (const std::exception& e) {
+    }
+}
 
 bool HashDB::LoadFromCSV(const std::string& csvPath) {
+
     std::ifstream file(csvPath);
     if (!file.is_open()) {
         std::cerr << "Error: Cannot open CSV file: " << csvPath << std::endl;
@@ -15,8 +22,12 @@ bool HashDB::LoadFromCSV(const std::string& csvPath) {
     std::string line;
     int lineNumber = 0;
 
-    std::unique_lock<std::shared_mutex> lock(mutex);
-    hashes.clear();
+    try {
+        hashes.clear();
+    } catch (const std::exception& e) {
+        file.close();
+        return false;
+    }
 
     while (std::getline(file, line)) {
         lineNumber++;
@@ -36,30 +47,34 @@ bool HashDB::LoadFromCSV(const std::string& csvPath) {
         std::string verdict = Utils::Trim(line.substr(semicolonPos + 1));
 
         hash = Utils::ToLower(hash);
-        
+
         if (hash.length() != 32) {
-            std::cerr << "Warning: Invalid MD5 hash length at line " << lineNumber 
+            std::cerr << "Warning: Invalid MD5 hash length at line " << lineNumber
                       << ": " << hash << std::endl;
             continue;
         }
 
-        hashes[hash] = verdict;
+        try {
+            hashes[hash] = verdict;
+        } catch (const std::exception& e) {
+            file.close();
+            return false;
+        }
     }
 
-    std::cout << "Loaded " << hashes.size() << " malicious hashes from " << csvPath << std::endl;
+    file.close();
     return !hashes.empty();
 }
 
 std::string HashDB::CheckHash(const std::string& hash) const {
-    std::shared_lock<std::shared_mutex> lock(mutex);
-    
+
     std::string lowerHash = Utils::ToLower(hash);
     auto it = hashes.find(lowerHash);
-    
+
     return (it != hashes.end()) ? it->second : "";
 }
 
 size_t HashDB::GetHashCount() const {
-    std::shared_lock<std::shared_mutex> lock(mutex);
-    return hashes.size();
+    size_t count = hashes.size();
+    return count;
 }

@@ -14,7 +14,6 @@ else()
     target_link_libraries(ScannerLib OpenSSL::SSL)
 endif()
 
-# Статическая линковка стандартных библиотек для MinGW
 if(WIN32 AND NOT MSVC)
     target_link_libraries(ScannerLib -static-libstdc++ -static-libgcc)
 endif()

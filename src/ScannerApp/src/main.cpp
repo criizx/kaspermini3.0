@@ -4,7 +4,6 @@
 #include "Scanner.h"
 #include "CommandLine.h"
 
-// Кроссплатформенные определения
 #ifdef _WIN32
     #include <windows.h>
     #define PLATFORM_NAME "Windows"
@@ -49,7 +48,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Malicious files:    " << result.maliciousFiles << std::endl;
     std::cout << "Errors encountered: " << result.errors << std::endl;
     std::cout << "Execution time:     " << std::fixed << std::setprecision(2)
-              << result.timeSeconds << " seconds" << std::endl;
+              << result.duration << " seconds" << std::endl;
     std::cout << "=================================" << std::endl;
 
     if (result.maliciousFiles > 0) {

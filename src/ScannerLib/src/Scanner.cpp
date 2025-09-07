@@ -6,25 +6,32 @@
 #include <condition_variable>
 #include <chrono>
 #include <iostream>
-#include <iomanip>  // put_time
-#include <ctime>    // localtime
+#include <iomanip>
+#include <ctime>
 
-bool Scanner::Initialize(const std::string& csvPath, const std::string& logPath) {
+bool Scanner::Initialize(const std::string& csvPath, const std::string& logiPath) {
+
     if (!hashDB.LoadFromCSV(csvPath)) {
         return false;
     }
 
-    this->logPath = logPath;
-    logFile.open(logPath);
+    this->logPath = logiPath;
+    logFile.open(logPath, std::ios::out | std::ios::trunc);
     if (!logFile.is_open()) {
         std::cerr << "Error: Cannot create log file: " << logPath << std::endl;
         return false;
     }
-
-    {
+    try {
         std::lock_guard<std::mutex> lock(logMutex);
         logFile << "Timestamp,FilePath,Hash,Verdict" << std::endl;
         logFile.flush();
+        if (!logFile.good()) {
+            logFile.close();
+            return false;
+        }
+    } catch (const std::exception& e) {
+        logFile.close();
+        return false;
     }
 
     return true;
@@ -161,6 +168,6 @@ void Scanner::LogError(const std::string& message) {
     auto time_t = std::chrono::system_clock::to_time_t(now);
 
     logFile << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S")
-            << ",N/A,N/A,ERROR," << message << std::endl;  // Adjusted for CSV: Path=N/A, Hash=N/A, Verdict=ERROR, extra=message
+            << ",N/A,N/A,ERROR," << message << std::endl;
     logFile.flush();
 }

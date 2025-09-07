@@ -4,7 +4,6 @@ project(MalwareScanner)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Определяем компилятор
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(MSVC TRUE)
 else()
@@ -15,14 +14,12 @@ if(MSVC)
     add_compile_options(/W4 /WX)
 else()
     add_compile_options(-Wall -Wextra -Werror)
-    # Флаги для обхода проблем с MinGW
     add_compile_options(-Wno-deprecated-declarations)
     add_compile_definitions(_GLIBCXX_USE_STDIO_PURE=0)
 endif()
 
 if(WIN32)
     if(MSVC)
-        # Настройки для MSVC
         set(OPENSSL_ROOT_DIR "C:/OpenSSL-Win64")
         set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
 
@@ -53,7 +50,6 @@ if(WIN32)
 
         set(OPENSSL_FOUND TRUE)
     else()
-        # Настройки для MinGW - используем MSYS2 OpenSSL
         set(OPENSSL_ROOT_DIR "C:/msys64/mingw64")
         find_package(OpenSSL REQUIRED)
         set(OPENSSL_FOUND TRUE)
@@ -68,3 +64,4 @@ endif()
 
 add_subdirectory(src/ScannerLib)
 add_subdirectory(src/ScannerApp)
+add_subdirectory(tests)
