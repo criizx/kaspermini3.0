@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
-#include "../include/HashDB.h"
-#include "../include/Utils.h"
 #include <fstream>
 #include <filesystem>
+
+#include "../include/HashDB.h"
+#include "../include/Utils.h"
 
 class HashDBTest : public ::testing::Test {
 protected:
@@ -48,5 +49,5 @@ TEST_F(HashDBTest, CheckHash_NonExistentHash) {
 TEST_F(HashDBTest, CheckHash_CaseInsensitive) {
     HashDB db;
     db.LoadFromCSV("test_hashes.csv");
-    EXPECT_EQ(db.CheckHash("D41D8CD98F00B204E9800998ECF8427E"), "Trojan"); // Uppercase
+    EXPECT_EQ(db.CheckHash("D41D8CD98F00B204E9800998ECF8427E"), "Trojan");
 }

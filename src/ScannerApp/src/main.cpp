@@ -1,11 +1,11 @@
 #include <iostream>
 #include <filesystem>
 #include <iomanip>
+
 #include "Scanner.h"
 #include "CommandLine.h"
 
 #ifdef _WIN32
-    #include <windows.h>
     #define PLATFORM_NAME "Windows"
 #elif defined(__linux__)
     #define PLATFORM_NAME "Linux"
@@ -16,7 +16,7 @@
 #endif
 
 int main(int argc, char* argv[]) {
-    std::cout << "Malware Scanner v1.0 (" << PLATFORM_NAME << ")" << std::endl;
+    std::cout << "KasperMini v2.2 (" << PLATFORM_NAME << ")" << std::endl;
     std::cout << "=======================================" << std::endl;
 
     CommandLineArgs args;
@@ -40,19 +40,19 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     std::cout << "Starting scan of: " << args.scanPath << std::endl;
-    auto result = scanner.ScanDirectory(args.scanPath);
+    auto [totalFiles, suspiciousFiles, errors, duration] = scanner.ScanDirectory(args.scanPath);
 
     std::cout << std::endl;
     std::cout << "========== SCAN REPORT ==========" << std::endl;
-    std::cout << "Files processed:    " << result.totalFiles << std::endl;
-    std::cout << "Malicious files:    " << result.maliciousFiles << std::endl;
-    std::cout << "Errors encountered: " << result.errors << std::endl;
+    std::cout << "Files processed:    " << totalFiles << std::endl;
+    std::cout << "Suspicious files:    " << suspiciousFiles << std::endl;
+    std::cout << "Errors encountered: " << errors << std::endl;
     std::cout << "Execution time:     " << std::fixed << std::setprecision(2)
-              << result.duration << " seconds" << std::endl;
+              << duration << " seconds" << std::endl;
     std::cout << "=================================" << std::endl;
 
-    if (result.maliciousFiles > 0) {
-        std::cout << "WARNING: Malicious files detected! Check log file: " << args.logPath << std::endl;
+    if (suspiciousFiles > 0) {
+        std::cout << "WARNING: Suspicious file/s detected! Check log file: " << args.logPath << std::endl;
         return 2;
     }
 

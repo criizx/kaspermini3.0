@@ -15,7 +15,6 @@ if(WIN32 AND NOT MSVC)
 endif()
 
 if(WIN32)
-    # Копируем DLL ScannerLib
     add_custom_command(TARGET ScannerApp POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:ScannerLib>

@@ -1,4 +1,3 @@
-#include "../include/Utils.h"
 #include <openssl/md5.h>
 #include <fstream>
 #include <iomanip>
@@ -7,6 +6,8 @@
 #include <chrono>
 #include <cctype>
 #include <openssl/evp.h>
+
+#include "../include/Utils.h"
 
 std::string Utils::CalculateMD5(const std::filesystem::path& filePath) {
     std::ifstream file(filePath, std::ios::binary);

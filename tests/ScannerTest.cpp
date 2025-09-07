@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
-#include "../include/HashDB.h"
 #include <filesystem>
 #include <fstream>
+
+#include "../include/HashDB.h"
 
 class ScannerTest : public ::testing::Test {
 protected:
@@ -17,7 +18,5 @@ protected:
 };
 
 TEST_F(ScannerTest, MinimalHashDBTest) {
-    std::cerr << "DEBUG: Starting MinimalHashDBTest" << std::endl;
     HashDB hashDB;
-    std::cerr << "DEBUG: Exiting MinimalHashDBTest" << std::endl;
 }

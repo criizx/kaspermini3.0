@@ -1,8 +1,9 @@
-#include "../include/HashDB.h"
-#include "../include/Utils.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
+
+#include "../include/HashDB.h"
+#include "../include/Utils.h"
 
 HashDB::~HashDB() {
     try {

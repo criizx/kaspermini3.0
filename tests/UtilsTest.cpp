@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
-#include "../include/Utils.h"
 #include <fstream>
 #include <filesystem>
+
+#include "../include/Utils.h"
 
 class UtilsTest : public ::testing::Test {
 protected:

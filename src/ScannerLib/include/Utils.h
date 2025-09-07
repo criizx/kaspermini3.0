@@ -1,7 +1,9 @@
 #pragma once
-#include "ScannerAPI.h"
+
 #include <string>
 #include <filesystem>
+
+#include "ScannerAPI.h"
 
 class SCANNER_API Utils {
 public:

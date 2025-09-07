@@ -1,7 +1,9 @@
 #pragma once
-#include "ScannerAPI.h"
+
 #include <string>
 #include <unordered_map>
+
+#include "ScannerAPI.h"
 
 class SCANNER_API HashDB {
     std::unordered_map<std::string, std::string> hashes;

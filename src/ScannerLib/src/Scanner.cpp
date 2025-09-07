@@ -1,5 +1,3 @@
-#include "../include/Scanner.h"
-#include "../include/Utils.h"
 #include <filesystem>
 #include <thread>
 #include <queue>
@@ -9,8 +7,10 @@
 #include <iomanip>
 #include <ctime>
 
-bool Scanner::Initialize(const std::string& csvPath, const std::string& logiPath) {
+#include "../include/Scanner.h"
+#include "../include/Utils.h"
 
+bool Scanner::Initialize(const std::string& csvPath, const std::string& logiPath) {
     if (!hashDB.LoadFromCSV(csvPath)) {
         return false;
     }
@@ -44,10 +44,10 @@ Scanner::~Scanner() {
 }
 
 ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
-    auto startTime = std::chrono::high_resolution_clock::now();
+    const auto startTime = std::chrono::high_resolution_clock::now();
 
     totalFiles = 0;
-    maliciousFiles = 0;
+    suspiciousFiles = 0;
     errors = 0;
 
     std::queue<std::filesystem::path> fileQueue;
@@ -81,13 +81,13 @@ ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
         cv.notify_all();
     });
 
-    unsigned int cores = std::thread::hardware_concurrency();
-    int workerCount = (cores > 0) ? static_cast<int>(cores) : 1;
-    std::cout << "Using " << workerCount << " worker threads" << std::endl;
+    const unsigned int cores = std::thread::hardware_concurrency();
+    const int workerCount = (cores > 0) ? static_cast<int>(cores) : 1;
 
     std::vector<std::thread> workers;
+    workers.reserve(workerCount);
     for (int i = 0; i < workerCount; ++i) {
-        workers.emplace_back([&]() {
+            workers.emplace_back([&]() {
             while (true) {
                 std::filesystem::path filePath;
                 {
@@ -115,57 +115,57 @@ ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
         worker.join();
     }
 
-    auto endTime = std::chrono::high_resolution_clock::now();
-    double duration = std::chrono::duration<double>(endTime - startTime).count();
+    const auto endTime = std::chrono::high_resolution_clock::now();
+    const double duration = std::chrono::duration<double>(endTime - startTime).count();
 
-    return {totalFiles.load(), maliciousFiles.load(), errors.load(), duration};
+    return {totalFiles.load(), suspiciousFiles.load(), errors.load(), duration};
 }
 
 void Scanner::ScanFile(const std::filesystem::path& filePath) {
     try {
-        totalFiles++;
+        ++totalFiles;
 
-        std::string hash = Utils::CalculateMD5(filePath);
+        const std::string hash = Utils::CalculateMD5(filePath);
         if (hash.empty()) {
-            errors++;
-            LogError("Cannot calculate MD5 for file: " + filePath.string());
+            ++errors;
+            LogError("Can't calc MD5 for file: " + filePath.string());
             return;
         }
 
         std::string verdict = hashDB.CheckHash(hash);
         if (!verdict.empty()) {
-            maliciousFiles++;
-            LogMalicious(filePath.string(), hash, verdict);
+            ++suspiciousFiles;
+            LogSuspicious(filePath.string(), hash, verdict);
         }
 
         if (totalFiles % 100 == 0) {
-            std::cout << "Processed " << totalFiles << " files..." << std::endl;
+            std::cout << "Processed " << totalFiles << " files" << std::endl;
         }
 
     } catch (const std::exception& e) {
-        errors++;
+        ++errors;
         LogError("Error processing file " + filePath.string() + ": " + e.what());
     }
 }
 
-void Scanner::LogMalicious(const std::string& path, const std::string& hash, const std::string& verdict) {
+void Scanner::LogSuspicious(const std::string& path, const std::string& hash, const std::string& verdict) {
     std::lock_guard<std::mutex> lock(logMutex);
 
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
+    const auto now = std::chrono::system_clock::now();
+    const auto time_t = std::chrono::system_clock::to_time_t(now);
 
     logFile << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S")
             << "," << path << "," << hash << "," << verdict << std::endl;
     logFile.flush();
 
-    std::cout << "MALICIOUS: " << path << " [" << verdict << "]" << std::endl;
+    std::cout << "SUSPICIOUS: " << path << " [" << verdict << "]" << std::endl;
 }
 
 void Scanner::LogError(const std::string& message) {
     std::lock_guard<std::mutex> lock(logMutex);
 
-    auto now = std::chrono::system_clock::now();
-    auto time_t = std::chrono::system_clock::to_time_t(now);
+    const auto now = std::chrono::system_clock::now();
+    const auto time_t = std::chrono::system_clock::to_time_t(now);
 
     logFile << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S")
             << ",N/A,N/A,ERROR," << message << std::endl;

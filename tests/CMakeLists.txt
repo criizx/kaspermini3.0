@@ -13,10 +13,6 @@ find_library(GTEST_MAIN_LIBRARY
         HINTS ${GTEST_ROOT}/lib
 )
 
-if(NOT GTEST_INCLUDE_DIR OR NOT GTEST_LIBRARY OR NOT GTEST_MAIN_LIBRARY)
-    message(FATAL_ERROR "GoogleTest not found. Ensure it is installed in C:/msys64/mingw64 or specify GTEST_ROOT.")
-endif()
-
 include_directories(${GTEST_INCLUDE_DIR})
 
 add_executable(ScannerTests

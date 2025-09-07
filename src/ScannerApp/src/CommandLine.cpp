@@ -1,7 +1,8 @@
-#include "../include/CommandLine.h"
 #include <iostream>
 #include <filesystem>
-#include <cctype>  // Для trim
+#include <cctype>
+
+#include "../include/CommandLine.h"
 
 std::string Trim(const std::string& str) {
     size_t start = str.find_first_not_of(" \t");
@@ -27,7 +28,8 @@ bool ParseCommandLine(int argc, char* argv[], CommandLineArgs& args) {
         if (arg == "--help") {
             PrintUsage();
             exit(0);
-        } else if (arg == "--base") {
+        }
+        if (arg == "--base") {
             args.basePath = value;
         } else if (arg == "--log") {
             args.logPath = value;
