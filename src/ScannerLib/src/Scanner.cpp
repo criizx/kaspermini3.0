@@ -6,9 +6,110 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include <map>
+#include <algorithm>
 
-#include "../include/Scanner.h"
 #include "../include/Utils.h"
+#include "../include/Scanner.h"
+
+const std::map<std::string, int> EXTENSION_PRIORITIES = {
+    {".exe", 1},
+    {".dll", 1},
+    {".sys", 1},
+    {".bat", 1},
+    {".cmd", 1},
+
+    {".js", 2},
+    {".vbs", 2},
+    {".jar", 2},
+
+    {".doc", 3},
+    {".docx", 3},
+    {".xls", 3},
+    {".xlsx", 3},
+    {".ppt", 3},
+    {".pptx", 3},
+    {"oth", 4}
+};
+
+struct FileTask {
+    std::filesystem::path path;
+    int priority{};
+
+
+    bool operator<(const FileTask& other) const {
+        return priority > other.priority;
+    }
+};
+
+void Scanner::ScanFile(const std::filesystem::path& filePath) {
+    try {
+        ++totalFiles;
+
+        const std::string hash = Utils::CalculateMD5(filePath);
+        if (hash.empty()) {
+            ++errors;
+            LogError("Can't calc MD5 for file: " + filePath.string());
+            return;
+        }
+
+        if (const std::string verdict = hashDB.CheckHash(hash); !verdict.empty()) {
+            ++suspiciousFiles;
+            LogSuspicious(filePath.string(), hash, verdict);
+        }
+
+        if (totalFiles % 100 == 0) {
+            std::cout << "Processed " << totalFiles << " files" << std::endl;
+        }
+
+    } catch (const std::exception& e) {
+        ++errors;
+        LogError("Error processing file " + filePath.string() + ": " + e.what());
+    }
+}
+
+
+void Scanner::LogSuspicious(const std::string& path, const std::string& hash, const std::string& verdict) {
+    std::lock_guard<std::mutex> lock(logMutex);
+
+    const auto now = std::chrono::system_clock::now();
+    const auto time_t = std::chrono::system_clock::to_time_t(now);
+
+    logFile << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S")
+            << "," << path << "," << hash << "," << verdict << std::endl;
+    logFile.flush();
+
+    std::cout << "SUSPICIOUS: " << path << " [" << verdict << "]" << std::endl;
+}
+
+void Scanner::LogError(const std::string& message) {
+    std::lock_guard<std::mutex> lock(logMutex);
+
+    const auto now = std::chrono::system_clock::now();
+    const auto time_t = std::chrono::system_clock::to_time_t(now);
+
+    logFile << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S")
+            << ",N/A,N/A,ERROR," << message << std::endl;
+    logFile.flush();
+}
+
+int Scanner::GetFilePriority(const std::filesystem::path& filePath) {
+    std::string extension = filePath.extension().string();
+
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+    if (const auto it = EXTENSION_PRIORITIES.find(extension); it != EXTENSION_PRIORITIES.end()) {
+        return it->second;
+    }
+
+    return EXTENSION_PRIORITIES.at("oth");
+}
+
+Scanner::~Scanner() {
+    if (logFile.is_open()) {
+        logFile.close();
+    }
+}
 
 bool Scanner::Initialize(const std::string& csvPath, const std::string& logiPath) {
     if (!hashDB.LoadFromCSV(csvPath)) {
@@ -37,12 +138,6 @@ bool Scanner::Initialize(const std::string& csvPath, const std::string& logiPath
     return true;
 }
 
-Scanner::~Scanner() {
-    if (logFile.is_open()) {
-        logFile.close();
-    }
-}
-
 ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
     const auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -50,7 +145,7 @@ ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
     suspiciousFiles = 0;
     errors = 0;
 
-    std::queue<std::filesystem::path> fileQueue;
+    std::priority_queue<FileTask> fileQueue;
     std::mutex queueMutex;
     std::condition_variable cv;
     bool finished = false;
@@ -59,9 +154,12 @@ ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(dirPath)) {
                 if (entry.is_regular_file()) {
+                    FileTask task;
+                    task.path = entry.path();
+                    task.priority = GetFilePriority(entry.path());
                     {
                         std::lock_guard<std::mutex> lock(queueMutex);
-                        fileQueue.push(entry.path());
+                        fileQueue.push(task);
                     }
                     cv.notify_one();
                 }
@@ -87,9 +185,9 @@ ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
     std::vector<std::thread> workers;
     workers.reserve(workerCount);
     for (int i = 0; i < workerCount; ++i) {
-            workers.emplace_back([&]() {
+        workers.emplace_back([&]() {
             while (true) {
-                std::filesystem::path filePath;
+                FileTask task;
                 {
                     std::unique_lock<std::mutex> lock(queueMutex);
                     cv.wait(lock, [&] { return !fileQueue.empty() || finished; });
@@ -101,11 +199,11 @@ ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
                         continue;
                     }
 
-                    filePath = fileQueue.front();
+                    task = fileQueue.top();
                     fileQueue.pop();
                 }
 
-                ScanFile(filePath);
+                ScanFile(task.path);
             }
         });
     }
@@ -119,55 +217,4 @@ ScanResult Scanner::ScanDirectory(const std::string& dirPath) {
     const double duration = std::chrono::duration<double>(endTime - startTime).count();
 
     return {totalFiles.load(), suspiciousFiles.load(), errors.load(), duration};
-}
-
-void Scanner::ScanFile(const std::filesystem::path& filePath) {
-    try {
-        ++totalFiles;
-
-        const std::string hash = Utils::CalculateMD5(filePath);
-        if (hash.empty()) {
-            ++errors;
-            LogError("Can't calc MD5 for file: " + filePath.string());
-            return;
-        }
-
-        std::string verdict = hashDB.CheckHash(hash);
-        if (!verdict.empty()) {
-            ++suspiciousFiles;
-            LogSuspicious(filePath.string(), hash, verdict);
-        }
-
-        if (totalFiles % 100 == 0) {
-            std::cout << "Processed " << totalFiles << " files" << std::endl;
-        }
-
-    } catch (const std::exception& e) {
-        ++errors;
-        LogError("Error processing file " + filePath.string() + ": " + e.what());
-    }
-}
-
-void Scanner::LogSuspicious(const std::string& path, const std::string& hash, const std::string& verdict) {
-    std::lock_guard<std::mutex> lock(logMutex);
-
-    const auto now = std::chrono::system_clock::now();
-    const auto time_t = std::chrono::system_clock::to_time_t(now);
-
-    logFile << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S")
-            << "," << path << "," << hash << "," << verdict << std::endl;
-    logFile.flush();
-
-    std::cout << "SUSPICIOUS: " << path << " [" << verdict << "]" << std::endl;
-}
-
-void Scanner::LogError(const std::string& message) {
-    std::lock_guard<std::mutex> lock(logMutex);
-
-    const auto now = std::chrono::system_clock::now();
-    const auto time_t = std::chrono::system_clock::to_time_t(now);
-
-    logFile << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S")
-            << ",N/A,N/A,ERROR," << message << std::endl;
-    logFile.flush();
 }

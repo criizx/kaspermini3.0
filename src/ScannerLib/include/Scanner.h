@@ -18,6 +18,7 @@ struct SCANNER_API ScanResult {
 
 class SCANNER_API Scanner {
 private:
+
     HashDB hashDB;
     std::ofstream logFile;
     std::string logPath;
@@ -29,6 +30,8 @@ private:
     void ScanFile(const std::filesystem::path& filePath);
     void LogSuspicious(const std::string& path, const std::string& hash, const std::string& verdict);
     void LogError(const std::string& message);
+
+     static int GetFilePriority(const std::filesystem::path& filePath);
 
 public:
     Scanner() = default;
