@@ -15,12 +15,6 @@ Architecture
 
 The project is structured as a modular C++ application with the following components:
 
-Core Components
-
-- ScannerLib: Shared library containing core scanning functionality
-- ScannerApp: Command-line application interface
-- HashDB: CSV-based malware signature database manager
-- Utils: Cross-platform utility functions for MD5 calculation and string operations
 
 Dependencies
 
