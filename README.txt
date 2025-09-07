@@ -15,7 +15,6 @@ Architecture
 
 The project is structured as a modular C++ application with the following components:
 
-
 Dependencies
 
 - CMake: Version 3.16 or higher
