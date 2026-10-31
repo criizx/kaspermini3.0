@@ -10,7 +10,6 @@ class SCANNER_API HashDB {
 
 public:
     HashDB() = default;
-    ~HashDB();
     bool LoadFromCSV(const std::string& csvPath);
     std::string CheckHash(const std::string& hash) const;
     size_t GetHashCount() const;

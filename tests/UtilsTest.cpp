@@ -2,7 +2,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include "../include/Utils.h"
+#include "Utils.h"
 
 class UtilsTest : public ::testing::Test {
 protected:
@@ -39,4 +39,13 @@ TEST_F(UtilsTest, Trim) {
     EXPECT_EQ(Utils::Trim("  hello  "), "hello");
     EXPECT_EQ(Utils::Trim("\t\n  "), "");
     EXPECT_EQ(Utils::Trim("no_spaces"), "no_spaces");
+}
+
+TEST_F(UtilsTest, CalculateMD5_EmptyFile) {
+    std::ofstream("test_file.txt", std::ios::trunc).close();
+    EXPECT_EQ(Utils::CalculateMD5("test_file.txt"), "d41d8cd98f00b204e9800998ecf8427e");
+}
+
+TEST_F(UtilsTest, CalculateMD5_DirectoryIsNotAFile) {
+    EXPECT_TRUE(Utils::CalculateMD5(std::filesystem::current_path()).empty());
 }

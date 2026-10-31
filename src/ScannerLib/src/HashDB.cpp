@@ -1,16 +1,10 @@
 #include <fstream>
-#include <sstream>
+#include <algorithm>
+#include <utility>
 #include <iostream>
 
 #include "../include/HashDB.h"
 #include "../include/Utils.h"
-
-HashDB::~HashDB() {
-    try {
-        hashes.clear();
-    } catch (const std::exception& e) {
-    }
-}
 
 bool HashDB::LoadFromCSV(const std::string& csvPath) {
 
@@ -23,16 +17,12 @@ bool HashDB::LoadFromCSV(const std::string& csvPath) {
     std::string line;
     int lineNumber = 0;
 
-    try {
-        hashes.clear();
-    } catch (const std::exception& e) {
-        file.close();
-        return false;
-    }
+    decltype(hashes) loadedHashes;
 
     while (std::getline(file, line)) {
         lineNumber++;
 
+        line = Utils::Trim(line);
         if (line.empty() || line[0] == '#') {
             continue;
         }
@@ -49,22 +39,23 @@ bool HashDB::LoadFromCSV(const std::string& csvPath) {
 
         hash = Utils::ToLower(hash);
 
-        if (hash.length() != 32) {
-            std::cerr << "Warning: Invalid MD5 hash length at line " << lineNumber
+        if (hash.length() != 32 || !std::all_of(hash.begin(), hash.end(), [](char c) {
+                return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+            }) || verdict.empty()) {
+            std::cerr << "Warning: Invalid hash or empty verdict at line " << lineNumber
                       << ": " << hash << std::endl;
             continue;
         }
 
-        try {
-            hashes[hash] = verdict;
-        } catch (const std::exception& e) {
-            file.close();
-            return false;
-        }
+        loadedHashes[hash] = std::move(verdict);
     }
 
-    file.close();
-    return !hashes.empty();
+    if (file.bad() || loadedHashes.empty()) {
+        return false;
+    }
+
+    hashes.swap(loadedHashes);
+    return true;
 }
 
 std::string HashDB::CheckHash(const std::string& hash) const {
@@ -76,6 +67,5 @@ std::string HashDB::CheckHash(const std::string& hash) const {
 }
 
 size_t HashDB::GetHashCount() const {
-    size_t count = hashes.size();
-    return count;
+    return hashes.size();
 }

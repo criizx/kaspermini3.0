@@ -76,4 +76,7 @@ endif()
 
 add_subdirectory(src/ScannerLib)
 add_subdirectory(src/ScannerApp)
-add_subdirectory(tests)
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "../include/HashDB.h"
+#include "HashDB.h"
 
 class ScannerTest : public ::testing::Test {
 protected:
