@@ -1,4 +1,5 @@
-#include <openssl/md5.h>
+#include <array>
+#include <memory>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -10,39 +11,44 @@
 #include "../include/Utils.h"
 
 std::string Utils::CalculateMD5(const std::filesystem::path& filePath) {
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(filePath, error)) {
+        return "";
+    }
+
     std::ifstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
         return "";
     }
 
-    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    const std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)> mdctx(
+        EVP_MD_CTX_new(), EVP_MD_CTX_free);
     if (mdctx == nullptr) {
         return "";
     }
 
-    if (EVP_DigestInit_ex(mdctx, EVP_md5(), nullptr) != 1) {
-        EVP_MD_CTX_free(mdctx);
+    if (EVP_DigestInit_ex(mdctx.get(), EVP_md5(), nullptr) != 1) {
         return "";
     }
 
     constexpr size_t BUFFER_SIZE = 64 * 1024;
-    char buffer[BUFFER_SIZE];
+    std::array<char, BUFFER_SIZE> buffer{};
 
-    while (file.read(buffer, BUFFER_SIZE) || file.gcount() > 0) {
-        if (EVP_DigestUpdate(mdctx, buffer, file.gcount()) != 1) {
-            EVP_MD_CTX_free(mdctx);
+    while (file.read(buffer.data(), buffer.size()) || file.gcount() > 0) {
+        if (EVP_DigestUpdate(mdctx.get(), buffer.data(), static_cast<size_t>(file.gcount())) != 1) {
             return "";
         }
     }
 
-    unsigned char result[MD5_DIGEST_LENGTH];
-    unsigned int len = 0;
-    if (EVP_DigestFinal_ex(mdctx, result, &len) != 1) {
-        EVP_MD_CTX_free(mdctx);
+    if (file.bad() || (file.fail() && !file.eof())) {
         return "";
     }
 
-    EVP_MD_CTX_free(mdctx);
+    std::array<unsigned char, EVP_MAX_MD_SIZE> result{};
+    unsigned int len = 0;
+    if (EVP_DigestFinal_ex(mdctx.get(), result.data(), &len) != 1) {
+        return "";
+    }
 
     std::stringstream ss;
     for (unsigned int i = 0; i < len; ++i) {

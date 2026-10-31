@@ -15,7 +15,9 @@ A cross-platform, multi-threaded malware scanner that performs MD5-based signatu
 
 The project is structured as a modular C++ application with the following components:
 
-*(Architecture details to be added)*
+- `src/ScannerLib`: signature database, streaming MD5 calculation, parallel scanning and logging.
+- `src/ScannerApp`: command-line parsing and scan reports.
+- `tests`: GoogleTest tests for the library.
 
 ## Dependencies
 
@@ -31,11 +33,25 @@ OpenSSL installation path: `C:/OpenSSL-Win64/`
 ## Build
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
 ```
+
+GoogleTest must be discoverable by CMake (use `CMAKE_PREFIX_PATH` for a custom installation).
+To build only the application, configure with `-DBUILD_TESTING=OFF`.
+
+### Signature database format
+
+Each line uses `MD5;Verdict`, for example:
+
+```text
+d41d8cd98f00b204e9800998ecf8427e;Example.EmptyFile
+```
+
+Hashes are case-insensitive and must contain exactly 32 hexadecimal characters.
+Blank lines and comments starting with `#` are ignored. Invalid entries and empty
+verdicts are skipped. A failed or empty database reload preserves the previous database.
 
 ## Output
 
